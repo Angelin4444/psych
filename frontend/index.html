@@ -1,0 +1,32 @@
+<!-- ### FRONTEND INDEX ### -->
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Question Assistant (Prototype)</title>
+</head>
+<body>
+  <h1>AI Question Assistant (Prototype)</h1>
+
+  <!-- ### VIDEO ### -->
+  <video id="video" controls width="700">
+    <source src="video.mp4" type="video/mp4" />
+  </video>
+
+  <!-- ### CONTROLS ### -->
+  <div style="margin-top:12px;">
+    <button id="start">Start Listening</button>
+    <button id="stop" disabled>Stop Listening</button>
+    <span id="status" style="margin-left:10px;">idle</span>
+  </div>
+
+  <!-- ### OUTPUT ### -->
+  <p><b>Video time:</b> <span id="t">0.0</span>s</p>
+  <p><b>Transcript:</b> <span id="txt">—</span></p>
+  <p><b>AI category:</b> <span id="cat">—</span> (score <span id="score">0</span>)</p>
+  <p><b>AI question:</b> <span id="q">—</span></p>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
