@@ -24,23 +24,100 @@ const COOLDOWN_SEC = 15;
 const ANALYZE_EVERY_SEC = 10;
 
 const video = document.getElementById("video");
+const video2 = document.getElementById("video2");
+const prevVideoBtn = document.getElementById("prevVideo");
+const nextVideoBtn = document.getElementById("nextVideo");
 const startBtn = document.getElementById("start");
 const stopBtn = document.getElementById("stop");
 const statusEl = document.getElementById("status");
-const tEl = document.getElementById("t");
 const txtEl = document.getElementById("txt");
-const catEl = document.getElementById("cat");
-const scoreEl = document.getElementById("score");
 const qEl = document.getElementById("q");
+
+// Current video element reference
+let currentVideoElement = video;
+
+// Initialize video display - show first video, hide second
+video.style.display = 'block';
+video2.style.display = 'none';
+
+// Function to switch to the next video
+function switchToNextVideo() {
+  // Pause current video
+  currentVideoElement.pause();
+  
+  // Toggle between the two video elements
+  if (currentVideoElement === video) {
+    currentVideoElement = video2;
+    video.style.display = 'none';
+    video2.style.display = 'block';
+  } else {
+    currentVideoElement = video;
+    video.style.display = 'block';
+    video2.style.display = 'none';
+  }
+  
+  // Ensure the video is muted and plays
+  currentVideoElement.muted = true;
+  currentVideoElement.currentTime = 0; // Reset to beginning
+  currentVideoElement.play();
+}
+
+// Function to switch to the previous video
+function switchToPrevVideo() {
+  // Pause current video
+  currentVideoElement.pause();
+  
+  // Toggle between the two video elements
+  if (currentVideoElement === video) {
+    currentVideoElement = video2;
+    video.style.display = 'none';
+    video2.style.display = 'block';
+  } else {
+    currentVideoElement = video;
+    video.style.display = 'block';
+    video2.style.display = 'none';
+  }
+  
+  // Ensure the video is muted and plays
+  currentVideoElement.muted = true;
+  currentVideoElement.currentTime = 0; // Reset to beginning
+  currentVideoElement.play();
+}
 
 let recognition = null;
 let isListening = false;
 let lastAskedAt = -Infinity;
-let lastTranscript = "";
-let latestText = "";      // latest interim/final text
+let latestText = "";
 let lastSpeechAt = Date.now() / 1000;
-let contextBuffer = [];   // for story context
+let contextBuffer = [];
 let analyzeTimer = null;
+
+// ### TEXT-TO-SPEECH ###
+function speakText(text) {
+  if ('speechSynthesis' in window) {
+    // Cancel any ongoing speech
+    speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    
+    // Choose a natural voice
+    const voices = speechSynthesis.getVoices();
+    const englishVoice = voices.find(v => v.lang.includes('en') && v.localService);
+    if (englishVoice) {
+      utterance.voice = englishVoice;
+    }
+    
+    speechSynthesis.speak(utterance);
+  }
+}
+
+// Load voices when they're available
+window.speechSynthesis.onvoiceschanged = () => {
+  speechSynthesis.getVoices();
+};
 
 // ### TIMING HELPERS ###
 function inMomentWindow(currentTime) {
@@ -62,7 +139,7 @@ function setupRecognition() {
 
   const r = new SR();
   r.continuous = true;
-  r.interimResults = true; // ✅ makes transcript feel live
+  r.interimResults = true;
   r.lang = "en-US";
 
   r.onresult = (event) => {
@@ -82,17 +159,13 @@ function setupRecognition() {
       else interim += (interim ? " " : "") + txt;
     }
 
-    // ✅ Always show something
     latestText = final || interim || latestText;
     txtEl.textContent = latestText || "—";
 
-    // Save FINAL lines to story context (so questions match the story)
     if (final) {
       contextBuffer.push(final);
       if (contextBuffer.length > 4) contextBuffer.shift();
     }
-
-    // (No API call here — we call on a timer so it works even with no pauses)
   };
 
   r.onerror = (e) => {
@@ -101,7 +174,6 @@ function setupRecognition() {
   };
 
   r.onend = () => {
-    // Chrome may stop recognition randomly
     console.warn("Recognition ended");
     if (isListening) {
       try { r.start(); } catch {}
@@ -116,7 +188,6 @@ function setupRecognition() {
 }
 
 // ### API CALL ###
-// Update callAnalyzeAPI to accept extra fields
 async function callAnalyzeAPI(utterance, extras = {}) {
   try {
     const res = await fetch(`${API_BASE}/analyze`, {
@@ -124,21 +195,24 @@ async function callAnalyzeAPI(utterance, extras = {}) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         session_id: "demo",
-        time_sec: video ? (video.currentTime || 0) : 0, // ok if video unused
+        time_sec: video ? (video.currentTime || 0) : 0,
         utterance,
         ...extras
       })
     });
 
     const data = await res.json();
-    catEl.textContent = data.category;
-    scoreEl.textContent = String(data.score);
     qEl.textContent = data.question;
+    
+    // SPEAK THE QUESTION
+    if (data.question && data.question !== "—") {
+      speakText(data.question);
+    }
 
     lastAskedAt = Date.now() / 1000;
   } catch (err) {
-  statusEl.textContent = "API error (check console)";
-  console.error("API call failed:", err);
+    statusEl.textContent = "API error (check console)";
+    console.error("API call failed:", err);
   }
 }
 
@@ -170,10 +244,6 @@ function stopAnalyzeLoop() {
 }
 
 // ### UI EVENTS ###
-video.addEventListener("timeupdate", () => {
-  tEl.textContent = (video.currentTime || 0).toFixed(1);
-});
-
 startBtn.addEventListener("click", async () => {
   if (!recognition) recognition = setupRecognition();
   if (!recognition) return;
@@ -200,3 +270,7 @@ stopBtn.addEventListener("click", () => {
   startBtn.disabled = false;
   stopBtn.disabled = true;
 });
+
+// Event listeners for the video navigation buttons
+nextVideoBtn.addEventListener("click", switchToNextVideo);
+prevVideoBtn.addEventListener("click", switchToPrevVideo);

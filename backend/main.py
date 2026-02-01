@@ -184,3 +184,7 @@ def analyze(req: AnalyzeRequest):
         question=question,
         time_sec=req.time_sec
     )
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

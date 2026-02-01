@@ -1,4 +1,0 @@
-# Python API
-fastapi
-uvicorn[standard]
-pydantic
